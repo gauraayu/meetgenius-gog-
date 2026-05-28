@@ -50,7 +50,6 @@ def get_authorization_url(state: str) -> str:
     flow.redirect_uri = settings.GOOGLE_REDIRECT_URI
     auth_url, _ = flow.authorization_url(
         access_type="offline",
-        include_granted_scopes="true",
         prompt="consent",  # force refresh_token
     )
     return auth_url
