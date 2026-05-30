@@ -5,7 +5,8 @@ import { useState } from 'react';
 import {
   ArrowLeft, Calendar, Clock, Video, Users, Download,
   CheckCircle, TrendingUp, MessageSquare, ChevronDown,
-  ChevronUp,
+  ChevronUp, BarChart2, FileText, ListChecks, Sparkles,
+  Image, DatabaseZap, FolderDown,
 } from 'lucide-react';
 
 const SPEAKERS = [
@@ -39,14 +40,14 @@ const ACTION_ITEMS = [
 ];
 
 const DETAIL_ITEMS = [
-  { icon:'👥', label:'Participants Detailed Analytics', desc:'Detailed camera, mic, and speaking analytics for each participant.', color:'bg-accent-muted text-accent' },
-  { icon:'🗂️', label:'Topic Breakdown',                desc:'Detailed breakdown of topics discussed with timestamps.',          color:'bg-blue-500/10 text-blue-400' },
-  { icon:'📄', label:'Full Transcript',                desc:'Complete word-by-word transcript of the entire meeting.',           color:'bg-orange-500/10 text-orange-400' },
-  { icon:'✅', label:'Action Items Tracker',           desc:'Track action item progress, updates, and comments.',               color:'bg-accent-muted text-accent' },
-  { icon:'✨', label:'AI Insights & Analysis',         desc:'Detailed AI analysis including sentiment, key topics, and trends.', color:'bg-purple-500/10 text-purple-400' },
-  { icon:'🖼️', label:'Screenshots Timeline',          desc:'View all screenshots in chronological order.',                     color:'bg-teal-500/10 text-teal-400' },
-  { icon:'📊', label:'Raw Data Logs',                  desc:'Download raw data logs including events, timestamps, and metrics.', color:'bg-blue-500/10 text-blue-400' },
-  { icon:'⬇️', label:'Export Data',                   desc:'Export all meeting data in JSON / CSV format.',                    color:'bg-accent-muted text-accent' },
+  { Icon: Users,       label:'Participants Detailed Analytics', desc:'Detailed camera, mic, and speaking analytics for each participant.', color:'bg-accent-muted text-accent' },
+  { Icon: BarChart2,   label:'Topic Breakdown',                desc:'Detailed breakdown of topics discussed with timestamps.',          color:'bg-blue-500/10 text-blue-400' },
+  { Icon: FileText,    label:'Full Transcript',                desc:'Complete word-by-word transcript of the entire meeting.',           color:'bg-orange-500/10 text-orange-400' },
+  { Icon: ListChecks,  label:'Action Items Tracker',           desc:'Track action item progress, updates, and comments.',               color:'bg-accent-muted text-accent' },
+  { Icon: Sparkles,    label:'AI Insights & Analysis',         desc:'Detailed AI analysis including sentiment, key topics, and trends.', color:'bg-purple-500/10 text-purple-400' },
+  { Icon: Image,       label:'Screenshots Timeline',          desc:'View all screenshots in chronological order.',                     color:'bg-teal-500/10 text-teal-400' },
+  { Icon: DatabaseZap, label:'Raw Data Logs',                  desc:'Download raw data logs including events, timestamps, and metrics.', color:'bg-blue-500/10 text-blue-400' },
+  { Icon: FolderDown,  label:'Export Data',                   desc:'Export all meeting data in JSON / CSV format.',                    color:'bg-accent-muted text-accent' },
 ];
 
 export default function DemoReportPage() {
@@ -363,8 +364,8 @@ export default function DemoReportPage() {
                 className={`flex items-center justify-between px-5 py-3.5 hover:bg-bg-card cursor-pointer transition-colors border-b border-border/50 ${i%2===0 ? 'border-r border-border/50' : ''}`}
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm ${item.color}`}>
-                    {item.icon}
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${item.color}`}>
+                    <item.Icon className="w-4 h-4" />
                   </div>
                   <div>
                     <p className="text-sm font-medium">{item.label}</p>

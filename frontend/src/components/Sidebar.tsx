@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
   LayoutDashboard, CalendarCheck, FileText, Users,
-  Settings, LogOut, Building2, User,
+  Settings, LogOut, User,
 } from 'lucide-react';
 import { clearToken, authApi } from '@/lib/api';
 
@@ -44,9 +44,7 @@ export function Sidebar() {
       {/* Logo */}
       <div className="p-5 border-b border-border">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-accent-muted flex items-center justify-center">
-            <Building2 className="w-5 h-5 text-accent" />
-          </div>
+          <img src="/gog-logo.ico" alt="GOG Logo" className="w-10 h-10 rounded-lg object-contain flex-shrink-0" />
           <div>
             <h1 className="font-bold text-text">GOG OMS</h1>
             <p className="text-xs text-text-dim">Management System</p>

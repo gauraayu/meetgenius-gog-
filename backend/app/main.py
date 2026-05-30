@@ -32,7 +32,14 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL, "http://localhost:3000"],
+    allow_origins=[
+        settings.FRONTEND_URL,
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "https://meet.google.com",
+        "chrome-extension://",
+    ],
+    allow_origin_regex=r"(https://meet\.google\.com.*|chrome-extension://.*|http://localhost:\d+)",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

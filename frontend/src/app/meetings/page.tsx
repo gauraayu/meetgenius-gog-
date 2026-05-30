@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Plus, Calendar, Clock, Video, Users, Search } from 'lucide-react';
+import { Plus, Calendar, Clock, Video, Users, Search, MonitorPlay, Mic } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { meetingsApi } from '@/lib/api';
 
@@ -33,8 +33,10 @@ export default function MeetingsPage() {
     s === 'completed' ? 'badge-success' :
     s === 'cancelled' ? 'badge-danger'  : 'bg-text-dim/10 text-text-dim';
 
-  const platformEmoji = (p: string) =>
-    p === 'zoom' ? '🔵' : p === 'jitsi' ? '🎥' : '📹';
+  const PlatformIcon = ({ p }: { p: string }) =>
+    p === 'zoom'   ? <MonitorPlay className="w-5 h-5 text-blue-400" /> :
+    p === 'jitsi'  ? <Mic         className="w-5 h-5 text-orange-400" /> :
+                     <Video       className="w-5 h-5 text-accent" />;
 
   return (
     <div className="flex">
@@ -79,7 +81,7 @@ export default function MeetingsPage() {
           <div className="space-y-2">
             <p className="text-xs text-text-dim mb-3">{filtered.length} result{filtered.length !== 1 ? 's' : ''}</p>
             {filtered.map(m => (
-              <MeetingRow key={m.id} m={m} statusBadge={statusBadge} platformEmoji={platformEmoji} />
+              <MeetingRow key={m.id} m={m} statusBadge={statusBadge} PlatformIcon={PlatformIcon} />
             ))}
           </div>
         ) : (
@@ -96,7 +98,7 @@ export default function MeetingsPage() {
                 </h2>
                 <div className="space-y-2">
                   {grouped[date].map(m => (
-                    <MeetingRow key={m.id} m={m} statusBadge={statusBadge} platformEmoji={platformEmoji} />
+                    <MeetingRow key={m.id} m={m} statusBadge={statusBadge} PlatformIcon={PlatformIcon} />
                   ))}
                 </div>
               </div>
@@ -108,14 +110,14 @@ export default function MeetingsPage() {
   );
 }
 
-function MeetingRow({ m, statusBadge, platformEmoji }: any) {
+function MeetingRow({ m, statusBadge, PlatformIcon }: any) {
   return (
     <Link href={`/meetings/${m.id}`}
       className="card hover:border-accent transition-colors block">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-lg bg-accent-muted flex items-center justify-center text-lg">
-            {platformEmoji(m.platform || 'google')}
+          <div className="w-10 h-10 rounded-lg bg-accent-muted flex items-center justify-center">
+            <PlatformIcon p={m.platform || 'google'} />
           </div>
           <div>
             <div className="flex items-center gap-2">

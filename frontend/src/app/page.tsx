@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Building2, Zap, Shield, Users, AlertCircle } from 'lucide-react';
+import { Zap, Shield, Users, AlertCircle } from 'lucide-react';
 import { authApi, getToken } from '@/lib/api';
 
 export default function LoginPage() {
@@ -41,9 +41,7 @@ export default function LoginPage() {
       {/* Left panel */}
       <div className="hidden lg:flex flex-col justify-between w-1/2 bg-bg-panel border-r border-border p-12">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-accent-muted flex items-center justify-center">
-            <Building2 className="w-5 h-5 text-accent" />
-          </div>
+          <img src="/gog-logo.ico" alt="GOG Logo" className="w-10 h-10 rounded-lg object-contain" />
           <span className="font-bold text-lg text-text">GOG OMS</span>
         </div>
 
@@ -87,9 +85,7 @@ export default function LoginPage() {
         <div className="w-full max-w-sm space-y-8">
 
           <div className="lg:hidden flex items-center gap-3 justify-center">
-            <div className="w-10 h-10 rounded-lg bg-accent-muted flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-accent" />
-            </div>
+            <img src="/gog-logo.ico" alt="GOG Logo" className="w-10 h-10 rounded-lg object-contain" />
             <span className="font-bold text-lg text-text">GOG OMS</span>
           </div>
 

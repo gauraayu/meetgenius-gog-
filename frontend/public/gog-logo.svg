@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <!-- Black background -->
+  <rect width="120" height="120" rx="14" fill="#0a0a0a"/>
+
+  <!-- Grid pattern overlay -->
+  <defs>
+    <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
+      <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#1a2a1a" stroke-width="0.5"/>
+    </pattern>
+  </defs>
+  <rect width="120" height="120" rx="14" fill="url(#grid)"/>
+
+  <!-- Outer G/C arc — thick green ring, open on the right -->
+  <path
+    d="M 96,60
+       A 42,42 0 1,1 96,61
+       Z"
+    fill="none"
+    stroke="#2d7a2d"
+    stroke-width="18"
+    stroke-linecap="round"
+    clip-path="url(#arcClip)"
+  />
+
+  <!-- Clip: only show the arc from ~200° to ~340° (leaving gap on right) -->
+  <defs>
+    <clipPath id="arcClip">
+      <path d="M 60,60
+               L 10,105
+               A 70,70 0 1,1 10,15
+               L 60,60 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- Re-draw arc with clip -->
+  <circle cx="60" cy="60" r="34"
+    fill="none"
+    stroke="#3ab03a"
+    stroke-width="18"
+    stroke-dasharray="165 50"
+    stroke-dashoffset="-10"
+    stroke-linecap="round"
+    transform="rotate(-210 60 60)"
+  />
+
+  <!-- Lighter inner highlight on arc -->
+  <circle cx="60" cy="60" r="34"
+    fill="none"
+    stroke="#4ecb4e"
+    stroke-width="4"
+    stroke-dasharray="155 60"
+    stroke-dashoffset="-10"
+    stroke-linecap="round"
+    transform="rotate(-210 60 60)"
+    opacity="0.4"
+  />
+
+  <!-- Small arrow/swoosh at top of arc -->
+  <path d="M 82,28 L 90,22 L 88,31" fill="#5de05d" stroke="#5de05d" stroke-width="1"/>
+
+  <!-- Bar chart inside the C opening (right side) -->
+  <!-- bars: x positions around 78–96, bottom at y=78 -->
+  <rect x="72" y="68" width="5" height="12" rx="1" fill="#2a7a2a"/>
+  <rect x="79" y="60" width="5" height="20" rx="1" fill="#3ab03a"/>
+  <rect x="86" y="52" width="5" height="28" rx="1" fill="#4ecb4e"/>
+  <rect x="93" y="56" width="5" height="24" rx="1" fill="#5de05d"/>
+
+  <!-- Bar chart floor line -->
+  <line x1="70" y1="81" x2="100" y2="81" stroke="#2a5a2a" stroke-width="1"/>
+</svg>

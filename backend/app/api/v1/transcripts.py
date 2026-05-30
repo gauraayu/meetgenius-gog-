@@ -10,7 +10,7 @@ Flow:
 from typing import List
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, File, Form, HTTPException, BackgroundTasks, UploadFile
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -114,6 +114,60 @@ async def list_segments(
         .all()
     )
     return segs
+
+
+@router.post("/meetings/{meeting_id}/transcribe-audio-chunk")
+async def transcribe_audio_chunk(
+    meeting_id: int,
+    audio: UploadFile = File(...),
+    speaker: str = Form("Participant"),
+    relative_seconds: float = Form(0.0),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """
+    Receive a short audio blob from the frontend (captured via getDisplayMedia),
+    transcribe it with Gemini, and return the text.
+
+    The frontend sends one chunk every ~5 seconds containing the mixed audio
+    of ALL Jitsi participants (host + remote). Speaker label is the current
+    dominant speaker tracked by the Jitsi External API.
+    """
+    meeting = db.query(Meeting).filter(Meeting.id == meeting_id).first()
+    if not meeting or meeting.host_user_id != user.id:
+        raise HTTPException(404, "Meeting not found")
+
+    audio_bytes = await audio.read()
+    if not audio_bytes or len(audio_bytes) < 500:
+        # Too small — likely silence, skip quietly
+        return {"text": "", "speaker": speaker, "relative_seconds": relative_seconds}
+
+    mime_type = audio.content_type or "audio/webm"
+
+    try:
+        text = gemini_ai.transcribe_audio(audio_bytes, mime_type)
+    except Exception as e:
+        # Don't crash — just log and return empty so the meeting continues
+        print(f"[transcribe] Gemini error for meeting {meeting_id}: {e}")
+        return {"text": "", "speaker": speaker, "relative_seconds": relative_seconds}
+
+    if not text:
+        return {"text": "", "speaker": speaker, "relative_seconds": relative_seconds}
+
+    # Persist immediately so it appears in the report
+    seg = TranscriptSegment(
+        meeting_id=meeting_id,
+        speaker_name=speaker,
+        speaker_email=None,
+        text=text,
+        relative_seconds=relative_seconds,
+        confidence=0.95,
+        is_final=True,
+    )
+    db.add(seg)
+    db.commit()
+
+    return {"text": text, "speaker": speaker, "relative_seconds": relative_seconds}
 
 
 def _generate_report_task(meeting_id: int, db_url: str):

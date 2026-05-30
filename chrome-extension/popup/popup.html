@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GOG OMS Caption Bot</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+
+  <div class="header">
+    <img src="../icons/icon48.png" alt="GOG" class="logo" onerror="this.style.display='none'" />
+    <div>
+      <div class="title">GOG OMS Caption Bot</div>
+      <div class="subtitle">Google Meet live transcription</div>
+    </div>
+    <div id="statusDot" class="dot dot-idle" title="Status"></div>
+  </div>
+
+  <!-- Status bar -->
+  <div id="statusBar" class="status-bar idle">
+    <span id="statusText">Not connected to a meeting</span>
+  </div>
+
+  <!-- Setup section -->
+  <div id="setupSection" class="section">
+    <label class="label">Backend URL</label>
+    <input id="apiBase" type="text" class="input" placeholder="http://localhost:8000/api/v1" />
+
+    <label class="label" style="margin-top:10px">Auth Token</label>
+    <input id="authToken" type="password" class="input" placeholder="Paste your GOG OMS token" />
+    <div class="hint">Copy from GOG OMS → open browser DevTools → Application → localStorage → token</div>
+
+    <label class="label" style="margin-top:10px">Select Meeting</label>
+    <select id="meetingSelect" class="input">
+      <option value="">— loading meetings —</option>
+    </select>
+
+    <div class="row" style="margin-top:12px">
+      <button id="connectBtn" class="btn btn-primary">Connect &amp; Start Bot</button>
+      <button id="refreshBtn" class="btn btn-secondary">↻ Refresh</button>
+    </div>
+  </div>
+
+  <!-- Live section (shown when active) -->
+  <div id="liveSection" class="section hidden">
+    <div class="stats-row">
+      <div class="stat">
+        <div id="segCount" class="stat-val">0</div>
+        <div class="stat-label">Segments</div>
+      </div>
+      <div class="stat">
+        <div id="speakerCount" class="stat-val">0</div>
+        <div class="stat-label">Speakers</div>
+      </div>
+      <div class="stat">
+        <div id="elapsed" class="stat-val">0:00</div>
+        <div class="stat-label">Duration</div>
+      </div>
+    </div>
+
+    <div class="label" style="margin-bottom:4px">Last captured</div>
+    <div id="lastCaption" class="caption-preview">Waiting for speech...</div>
+
+    <div class="row" style="margin-top:12px; gap:6px">
+      <button id="reportBtn" class="btn btn-accent">⬇ Generate Report</button>
+      <button id="stopBtn"   class="btn btn-danger">■ Stop Bot</button>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div id="logWrap" class="section">
+    <div class="label">Activity log</div>
+    <div id="log" class="log"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

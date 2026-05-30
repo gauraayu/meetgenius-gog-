@@ -6,36 +6,130 @@ import Link from 'next/link';
 import {
   ArrowLeft, Video, Calendar, Clock, Users, Mic, MicOff,
   Square, Sparkles, ExternalLink, Copy, Check, Camera, CameraOff,
-  PanelRightOpen, PanelRightClose,
+  PanelRightOpen, PanelRightClose, MonitorPlay, AlertTriangle,
+  CheckCircle2, StopCircle,
 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { meetingsApi, transcriptApi } from '@/lib/api';
 import { useSpeechTranscription } from '@/hooks/useSpeechTranscription';
+import { useAllParticipantsAudio } from '@/hooks/useAllParticipantsAudio';
 
-/* ─── Jitsi Embedded Component ───────────────────────────── */
-interface JitsiProps {
+/* ─── Jitsi External API Component ───────────────────────── */
+/**
+ * Uses the Jitsi Meet External API (JS SDK) instead of a raw iframe.
+ * This gives us real-time events:
+ *   - dominantSpeakerChanged → who is talking right now
+ *   - participantJoined / participantLeft → headcount
+ *
+ * The dominantSpeakerChanged event is forwarded to the parent so the
+ * all-participants audio capture can label each chunk with the right name.
+ */
+function JitsiMeeting({
+  roomUrl,
+  onLeft,
+  onDominantSpeakerChanged,
+  displayName = 'Host',
+}: {
   roomUrl: string;
   onLeft: () => void;
-}
+  onDominantSpeakerChanged?: (name: string) => void;
+  displayName?: string;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const apiRef       = useRef<any>(null);
 
-function JitsiMeeting({ roomUrl, onLeft }: Pick<JitsiProps, 'roomUrl' | 'onLeft'>) {
-  // Simple iframe embed — most reliable approach
-  // roomUrl = https://meet.jit.si/GOG-roomname
-  const room = roomUrl.replace('https://meet.jit.si/', '');
-  const src  = `https://meet.jit.si/${room}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.disableDeepLinking=true&interfaceConfig.SHOW_JITSI_WATERMARK=false&interfaceConfig.TOOLBAR_BUTTONS=["microphone","camera","chat","raisehand","tileview","hangup"]`;
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const room = roomUrl.replace('https://meet.jit.si/', '');
+
+    function initApi() {
+      if (!(window as any).JitsiMeetExternalAPI) return;
+      if (apiRef.current) return; // already initialised
+
+      const api = new (window as any).JitsiMeetExternalAPI('meet.jit.si', {
+        roomName: room,
+        parentNode: containerRef.current,
+        width:  '100%',
+        height: '100%',
+        configOverwrite: {
+          prejoinPageEnabled:   false,
+          startWithAudioMuted:  false,
+          disableDeepLinking:   true,
+          requireDisplayName:   false,
+        },
+        interfaceConfigOverwrite: {
+          SHOW_JITSI_WATERMARK: false,
+          TOOLBAR_BUTTONS: ['microphone', 'camera', 'chat', 'raisehand', 'tileview', 'hangup'],
+        },
+        userInfo: { displayName },
+      });
+
+      // Track who is the dominant (loudest) speaker in real time
+      api.addListener('dominantSpeakerChanged', ({ id }: { id: string }) => {
+        const participants: any[] = api.getParticipantsInfo() || [];
+        const match = participants.find((p: any) => p.participantId === id);
+        const name  = match?.displayName || displayName;
+        onDominantSpeakerChanged?.(name);
+      });
+
+      // Treat the host leaving the meeting as "meeting ended"
+      api.addListener('readyToClose', onLeft);
+
+      apiRef.current = api;
+    }
+
+    if ((window as any).JitsiMeetExternalAPI) {
+      initApi();
+    } else {
+      // Lazy-load the External API script once
+      if (!document.querySelector('script[src*="meet.jit.si/external_api"]')) {
+        const script = document.createElement('script');
+        script.src   = 'https://meet.jit.si/external_api.js';
+        script.async = true;
+        script.onload = initApi;
+        document.head.appendChild(script);
+      } else {
+        // Script tag already present but not yet loaded — poll briefly
+        const interval = setInterval(() => {
+          if ((window as any).JitsiMeetExternalAPI) {
+            clearInterval(interval);
+            initApi();
+          }
+        }, 200);
+      }
+    }
+
+    return () => {
+      apiRef.current?.dispose();
+      apiRef.current = null;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomUrl]);
 
   return (
-    <iframe
-      src={src}
-      allow="camera; microphone; display-capture; autoplay; clipboard-write"
-      style={{
-        width: '100%',
-        height: '100%',
-        border: 'none',
-        borderRadius: 12,
-      }}
-      title="Jitsi Meeting"
-    />
+    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* Hint bar */}
+      <div style={{
+        background: '#1a1a2e',
+        border: '1px solid rgba(255,165,0,0.3)',
+        borderRadius: '8px 8px 0 0',
+        padding: '6px 12px',
+        fontSize: 12,
+        color: '#f59e0b',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        flexShrink: 0,
+      }}>
+        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+        <span>
+          Allow <strong>microphone &amp; camera</strong> in your browser address bar.
+          To transcribe all participants, click <strong>&quot;Capture All Audio&quot;</strong> above.
+        </span>
+      </div>
+      {/* Jitsi mounts here */}
+      <div ref={containerRef} style={{ flex: 1, minHeight: 0 }} />
+    </div>
   );
 }
 
@@ -87,6 +181,20 @@ export default function MeetingDetailPage() {
       },
     });
 
+  // All-participants audio capture via getDisplayMedia + Gemini STT
+  const { isCapturing, captureError, startCapture, stopCapture } =
+    useAllParticipantsAudio({
+      meetingId,
+      getCurrentSpeaker: () => speakerRef.current,
+      onSegment: (seg) => {
+        setSegments(prev => [...prev, seg]);
+        bufferRef.current.push(seg);
+        if (flushTimer.current) clearTimeout(flushTimer.current);
+        flushTimer.current = setTimeout(flushBuffer, 2000);
+      },
+      onError: (msg) => console.warn('[AllParticipantsAudio]', msg),
+    });
+
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [segments, interimText]);
@@ -129,12 +237,20 @@ export default function MeetingDetailPage() {
       const platform = meeting?.platform || 'google';
       if (platform === 'jitsi') { setShowJitsi(true); setShowTranscript(true); }
       else if (platform === 'zoom') { window.open(meeting?.zoom_start_url || meeting?.meet_link, '_blank'); }
-      else { if (meeting?.meet_link) window.open(meeting.meet_link, '_blank'); }
+      else {
+        if (meeting?.meet_link) {
+          const url = meeting.meet_link.includes('meet.google.com')
+            ? `${meeting.meet_link}?gogMeetingId=${meetingId}`
+            : meeting.meet_link;
+          window.open(url, '_blank');
+        }
+      }
     } catch (e: any) { alert('Failed to start: ' + e.message); }
   };
 
   const handleStopMeeting = async () => {
     stop();
+    stopCapture();
     setShowJitsi(false);
     setShowTranscript(false);
     await flushBuffer();
@@ -158,7 +274,8 @@ export default function MeetingDetailPage() {
 
   const platform      = meeting.platform || 'google';
   const platformLabel = platform === 'zoom' ? 'Zoom' : platform === 'jitsi' ? 'Jitsi Meet' : 'Google Meet';
-  const platformEmoji = platform === 'zoom' ? '🔵' : platform === 'jitsi' ? '🎥' : '📹';
+  const PlatformIcon  = platform === 'zoom' ? MonitorPlay : platform === 'jitsi' ? Mic : Video;
+  const platformColor = platform === 'zoom' ? 'text-blue-400' : platform === 'jitsi' ? 'text-orange-400' : 'text-accent';
 
   return (
     <div className="flex">
@@ -178,8 +295,8 @@ export default function MeetingDetailPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold">{meeting.title}</h1>
-                <p className="text-text-dim text-sm">
-                  {meeting.meeting_code} · {platformEmoji} {platformLabel}
+                <p className="text-text-dim text-sm flex items-center gap-1.5">
+                  {meeting.meeting_code} · <PlatformIcon className={`w-3.5 h-3.5 ${platformColor}`} /> {platformLabel}
                   {isListening && (
                     <span className="ml-2 text-red-400 inline-flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-red-400 recording-dot inline-block" />
@@ -208,13 +325,19 @@ export default function MeetingDetailPage() {
                 // MEETING_LINK — share this with attendees
               </p>
               <div className="flex items-center gap-2">
-                <span className="text-xl">{platformEmoji}</span>
+                <PlatformIcon className={`w-5 h-5 ${platformColor} shrink-0`} />
                 <span className="text-sm font-medium flex-1 break-all text-text">{meeting.meet_link}</span>
                 <button onClick={copyLink} className="btn-secondary py-1.5 px-3 text-xs flex items-center gap-1.5 shrink-0">
                   {copied ? <Check className="w-3.5 h-3.5 text-accent" /> : <Copy className="w-3.5 h-3.5" />}
                   {copied ? 'Copied!' : 'Copy Link'}
                 </button>
-                <a href={meeting.meet_link} target="_blank" rel="noreferrer"
+                <a
+                  href={
+                    meeting.meet_link.includes('meet.google.com')
+                      ? `${meeting.meet_link}?gogMeetingId=${meetingId}`
+                      : meeting.meet_link
+                  }
+                  target="_blank" rel="noreferrer"
                   className="btn-primary py-1.5 px-3 text-xs flex items-center gap-1.5 shrink-0">
                   <ExternalLink className="w-3.5 h-3.5" /> Open
                 </a>
@@ -245,6 +368,38 @@ export default function MeetingDetailPage() {
               </Link>
             )}
           </div>
+
+          {/* ── Capture All Participants Audio (Jitsi only) ── */}
+          {platform === 'jitsi' && isListening && (
+            <div className="flex flex-col items-end gap-1">
+              <button
+                onClick={isCapturing ? stopCapture : startCapture}
+                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium border transition-all ${
+                  isCapturing
+                    ? 'bg-red-500/10 border-red-500/50 text-red-400 hover:bg-red-500/20'
+                    : 'bg-accent-muted border-accent/50 text-accent hover:bg-accent/20'
+                }`}
+                title="Captures audio from ALL participants via tab sharing. Chrome only."
+              >
+                {isCapturing ? (
+                  <><MicOff className="w-4 h-4" /> Stop All-Participant Capture</>
+                ) : (
+                  <><Mic className="w-4 h-4" /> Capture All Audio</>
+                )}
+                {isCapturing && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 recording-dot" />
+                )}
+              </button>
+              {captureError && (
+                <p className="text-xs text-orange-400 max-w-xs text-right">{captureError}</p>
+              )}
+              {!isCapturing && (
+                <p className="text-xs text-text-dim max-w-xs text-right">
+                  Transcribes all participants via Gemini · Chrome only · Select tab + tick &quot;Share audio&quot;
+                </p>
+              )}
+            </div>
+          )}
 
           {/* ── Transcript Toggle Button ── */}
           {meeting.enable_transcription && (
@@ -287,6 +442,11 @@ export default function MeetingDetailPage() {
               <JitsiMeeting
                 roomUrl={meeting.meet_link}
                 onLeft={handleStopMeeting}
+                displayName={meeting.host_name || 'Host'}
+                onDominantSpeakerChanged={(name) => {
+                  speakerRef.current = name;
+                  setCurrentSpeaker(name);
+                }}
               />
             </div>
           )}
@@ -303,7 +463,7 @@ export default function MeetingDetailPage() {
                 <div className="flex items-center gap-2 text-xs text-text-dim">
                   {isListening && (
                     <span className="text-accent font-mono text-xs">
-                      🎙 {currentSpeaker}
+                      <Mic className="w-3 h-3 inline mr-0.5" /> {currentSpeaker}
                     </span>
                   )}
                   <span>{segments.length} segments</span>
@@ -312,7 +472,7 @@ export default function MeetingDetailPage() {
 
               {!isSupported && (
                 <div className="text-sm text-orange-400 bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 mb-3">
-                  ⚠️ Use Chrome or Edge for live transcription.
+                  <AlertTriangle className="w-3.5 h-3.5 inline mr-1" /> Use Chrome or Edge for live transcription.
                 </div>
               )}
               {error && (
@@ -345,7 +505,9 @@ export default function MeetingDetailPage() {
               </div>
 
               <p className="text-xs text-text-dim mt-2">
-                Auto-saving every 2s · {isListening ? '🔴 Recording' : '⚫ Stopped'}
+                Auto-saving every 2s · {isListening
+                  ? <><StopCircle className="w-3 h-3 inline text-red-400 mr-0.5" /> Recording</>
+                  : <><StopCircle className="w-3 h-3 inline text-text-dim mr-0.5" /> Stopped</>}
               </p>
             </div>
           )}
@@ -386,7 +548,7 @@ export default function MeetingDetailPage() {
                   <p className="text-xs text-text-dim truncate">{a.email}</p>
                 </div>
                 <span className={`badge ${a.invitation_sent ? 'badge-success' : 'bg-text-dim/10 text-text-dim'}`}>
-                  {a.invitation_sent ? '✓ Invited' : 'Pending'}
+                  {a.invitation_sent ? <><Check className="w-3 h-3 inline mr-0.5" />Invited</> : 'Pending'}
                 </span>
               </div>
             ))}

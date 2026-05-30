@@ -7,6 +7,7 @@ import {
   X, Calendar, Clock, Repeat, Video, Users, Plus,
   Mic, Image, FileText, BarChart3, Bell, Sparkles,
   Copy, Check, ExternalLink, ArrowRight,
+  MonitorPlay, AlertCircle, CheckCircle2,
 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { meetingsApi } from '@/lib/api';
@@ -95,7 +96,8 @@ export default function NewMeetingPage() {
 
   // ── Success screen after scheduling ──
   if (createdMeeting) {
-    const emoji = platform === 'zoom' ? '🔵' : platform === 'jitsi' ? '🎥' : '📹';
+    const PlatformIcon = platform === 'zoom' ? MonitorPlay : platform === 'jitsi' ? Mic : Video;
+    const platformColor = platform === 'zoom' ? 'text-blue-400' : platform === 'jitsi' ? 'text-orange-400' : 'text-accent';
     const name  = platform === 'zoom' ? 'Zoom' : platform === 'jitsi' ? 'Jitsi Meet' : 'Google Meet';
     const link  = createdMeeting.meet_link;
     return (
@@ -103,7 +105,9 @@ export default function NewMeetingPage() {
         <main className="flex-1 p-8 max-w-2xl">
           <div className="card border-accent/40">
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center text-xl font-bold text-black">✓</div>
+              <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center font-bold text-black">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
               <div>
                 <h1 className="text-xl font-bold text-accent">Meeting Scheduled!</h1>
                 <p className="text-text-muted text-sm">Invites sent to {attendees.length} attendee{attendees.length !== 1 ? 's' : ''}</p>
@@ -112,7 +116,7 @@ export default function NewMeetingPage() {
 
             {link ? (
               <div className="bg-bg-card border border-accent/30 rounded-xl p-4 mb-4">
-                <p className="text-xs text-accent font-mono mb-2">{emoji} {name} Link — share this</p>
+                <p className="text-xs text-accent font-mono mb-2 flex items-center gap-1.5"><PlatformIcon className={`w-3.5 h-3.5 ${platformColor}`} /> {name} Link — share this</p>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-sm text-text flex-1 break-all font-medium">{link}</span>
                 </div>
@@ -138,7 +142,7 @@ export default function NewMeetingPage() {
                 ['Date', createdMeeting.meeting_date],
                 ['Time', createdMeeting.start_time?.slice(0,5)],
                 ['Duration', createdMeeting.duration_minutes + ' min'],
-                ['Platform', emoji + ' ' + name],
+                ['Platform', name],
               ].map(([k, v]) => (
                 <div key={k} className="flex justify-between">
                   <span className="text-text-muted">{k}</span>
@@ -296,9 +300,9 @@ export default function NewMeetingPage() {
                 <select className="input"
                   value={form.priority}
                   onChange={e => setForm({ ...form, priority: e.target.value })}>
-                  <option value="low">🟢 Low</option>
-                  <option value="medium">🟡 Medium</option>
-                  <option value="high">🔴 High</option>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
                 </select>
               </Field>
             </div>
@@ -318,13 +322,13 @@ export default function NewMeetingPage() {
             <Field label="11. Meeting Platform *">
               <div className="grid grid-cols-3 gap-3 mb-3">
                 {[
-                  { id: 'google', name: 'Google Meet', emoji: '📹', desc: 'Auto-generate via Calendar API' },
-                  { id: 'zoom',   name: 'Zoom',        emoji: '🔵', desc: 'Zoom meeting via API' },
-                  { id: 'jitsi',  name: 'Jitsi Meet',  emoji: '🎥', desc: 'Free, no account needed' },
+                  { id: 'google', name: 'Google Meet', Icon: Video,        iconCls: 'text-accent',       desc: 'Auto-generate via Calendar API' },
+                  { id: 'zoom',   name: 'Zoom',        Icon: MonitorPlay,  iconCls: 'text-blue-400',     desc: 'Zoom meeting via API' },
+                  { id: 'jitsi',  name: 'Jitsi Meet',  Icon: Mic,          iconCls: 'text-orange-400',   desc: 'Free, no account needed' },
                 ].map(p => (
                   <button key={p.id} type="button" onClick={() => setPlatform(p.id)}
                     className={"text-left p-3 rounded-xl border-2 transition-all " + (platform === p.id ? 'border-accent bg-accent-muted' : 'border-border bg-bg-card hover:border-accent/40')}>
-                    <div className="text-2xl mb-1">{p.emoji}</div>
+                    <div className="mb-1"><p.Icon className={`w-6 h-6 ${p.iconCls}`} /></div>
                     <p className="font-semibold text-sm">{p.name}</p>
                     <p className="text-xs text-text-muted mt-0.5">{p.desc}</p>
                     {platform === p.id && <div className="w-3 h-3 rounded-full bg-accent mt-2" />}
@@ -361,7 +365,7 @@ export default function NewMeetingPage() {
 
                     {generatedLink && (
                       <div className="mt-3 bg-bg-card border border-accent/40 rounded-xl p-3">
-                        <p className="text-xs text-accent font-mono mb-2">🎥 Jitsi Meeting Link</p>
+                        <p className="text-xs text-accent font-mono mb-2 flex items-center gap-1.5"><Mic className="w-3.5 h-3.5 text-orange-400" /> Jitsi Meeting Link</p>
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-text flex-1 break-all">{generatedLink}</span>
                           <button
@@ -379,7 +383,10 @@ export default function NewMeetingPage() {
                   </div>
                 ) : (
                   <div className="bg-bg-card border border-border rounded-xl p-3 text-xs text-text-muted flex items-center gap-2">
-                    {platform === 'google' ? '📹 Google Meet' : '🔵 Zoom'} link will be auto-generated after scheduling.
+                    {platform === 'google'
+                      ? <><Video className="w-3.5 h-3.5 text-accent" /> Google Meet</>
+                      : <><MonitorPlay className="w-3.5 h-3.5 text-blue-400" /> Zoom</>}
+                    {' '}link will be auto-generated after scheduling.
                   </div>
                 )}
               </div>
@@ -516,7 +523,7 @@ export default function NewMeetingPage() {
             </div>
 
             <div className="mt-6 p-3 rounded-lg border border-accent/30 bg-accent-muted">
-              <p className="text-xs font-medium text-accent mb-1">✨ Gemini 2.5 Flash</p>
+              <p className="text-xs font-medium text-accent mb-1 flex items-center gap-1.5"><Sparkles className="w-3 h-3" /> Gemini 2.5 Flash</p>
               <p className="text-xs text-text-muted">
                 AI summary & action items powered by Google's free Gemini API.
               </p>

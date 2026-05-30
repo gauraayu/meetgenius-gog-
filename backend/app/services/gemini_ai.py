@@ -95,14 +95,17 @@ def generate_meeting_report(
     """
     _ensure_configured()
 
-    # Format transcript for the model
+    # Format transcript for the model (used for AI analysis)
     formatted = []
+    formatted_original = []
     for seg in transcript_segments:
         speaker = seg.get("speaker_name") or seg.get("speaker") or "Unknown"
         ts = seg.get("timestamp_str") or _seconds_to_hms(seg.get("relative_seconds", 0))
         text = seg.get("text", "")
         formatted.append(f"[{ts}] {speaker}: {text}")
+        formatted_original.append(f"[{ts}] {speaker}: {text}")
     transcript_text = "\n".join(formatted)
+    original_transcript_text = "\n".join(formatted_original)
 
     user_prompt = f"""MEETING METADATA:
 Title: {meeting_metadata.get('title')}
@@ -145,9 +148,46 @@ Generate the meeting report as a JSON object following the schema."""
     return {
         **data,
         "attendance_percentage": attendance_pct,
-        "full_transcript_text": transcript_text,
+        "full_transcript_text": original_transcript_text,
         "gemini_model_used": settings.GEMINI_MODEL,
     }
+
+
+def transcribe_audio(audio_bytes: bytes, mime_type: str = "audio/webm") -> str:
+    """
+    Transcribe an audio chunk using Gemini multimodal input.
+
+    audio_bytes: raw audio data (webm, ogg, wav, etc.)
+    mime_type:   MIME type of the audio, e.g. "audio/webm;codecs=opus"
+    Returns the transcription text (empty string if no speech detected).
+    """
+    import base64
+
+    _ensure_configured()
+
+    # Gemini accepts audio as inline base64 data
+    audio_part = {
+        "inline_data": {
+            "mime_type": mime_type.split(";")[0],  # strip codec hints
+            "data": base64.b64encode(audio_bytes).decode("utf-8"),
+        }
+    }
+
+    model = genai.GenerativeModel(
+        model_name=settings.GEMINI_MODEL,
+        generation_config={"temperature": 0.0},
+    )
+
+    response = model.generate_content([
+        audio_part,
+        (
+            "Transcribe all speech in this audio clip exactly as spoken. "
+            "Return only the transcribed words — no labels, no timestamps, "
+            "no commentary. If there is no audible speech, return an empty string."
+        ),
+    ])
+
+    return (response.text or "").strip()
 
 
 def _seconds_to_hms(seconds: float) -> str:
